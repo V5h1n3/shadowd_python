@@ -17,7 +17,7 @@
 import os
 import time
 import traceback
-import ConfigParser
+import configparser
 import re
 import socket
 import ssl
@@ -35,6 +35,14 @@ STATUS_BAD_JSON                  = 4
 STATUS_ATTACK                    = 5
 STATUS_CRITICAL_ATTACK           = 6
 
+
+class B2SEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, bytes):
+            return str(obj, encoding='utf-8')
+        return json.JSONEncoder.default(self, obj)
+
+
 class Config:
     def __init__(self):
         if os.environ.get('SHADOWD_CONNECTOR_CONFIG'):
@@ -42,7 +50,7 @@ class Config:
         else:
             self.file = SHADOWD_CONNECTOR_CONFIG
 
-        self.config = ConfigParser.ConfigParser()
+        self.config = configparser.ConfigParser()
         self.config.read(self.file)
 
         if os.environ.get('SHADOWD_CONNECTOR_CONFIG_SECTION'):
@@ -53,11 +61,12 @@ class Config:
     def get(self, key, required = False, default = None):
         try:
             return self.config.get(self.section, key)
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             if required:
                 raise Exception(key + ' in config missing')
             else:
                 return default
+
 
 class Input:
     def set_config(self, config):
@@ -143,6 +152,7 @@ class Input:
         output.append('' . join(current))
         return output
 
+
 class Output:
     def set_config(self, config):
         self.config = config
@@ -161,6 +171,7 @@ class Output:
         handler.write(datetime + '\t' + message.rstrip() + '\n')
 
         handler.close()
+
 
 class Connection:
     def send(self, input, host, port, profile, key, ssl_cert):
@@ -187,11 +198,11 @@ class Connection:
             'hashes':    input.get_hashes()
         }
 
-        json_data = json.dumps(input_data)
+        json_data = json.dumps(input_data, cls=B2SEncoder)
         json_hmac = self.sign(key, json_data)
-        connection.sendall(str(profile) + "\n" + json_hmac + "\n" + json_data + "\n")
+        connection.sendall(bytes(str(profile) + "\n" + json_hmac + "\n" + json_data + "\n", 'utf-8'))
 
-        output = ''
+        output = b''
 
         while True:
             new_output = connection.recv(1024)
@@ -233,7 +244,8 @@ class Connection:
             raise Exception('processing error')
 
     def sign(self, key, json):
-        return hmac.new(key, json, hashlib.sha256).hexdigest()
+        return hmac.new(bytes(key, 'utf-8'), bytes(json, 'utf-8'), hashlib.sha256).hexdigest()
+
 
 class Connector:
     def start(self, input, output):

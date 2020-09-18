@@ -17,10 +17,10 @@
 import os
 import sys
 import cgi
-import Cookie
 import urllib
 import hashlib
 
+from http import cookies
 from .connector import Input, Output, Connector
 
 class InputCGI(Input):
@@ -55,7 +55,7 @@ class InputCGI(Input):
         # Save cookies in input.
         cookie_string = os.environ.get('HTTP_COOKIE')
         if cookie_string:
-            cookie = Cookie.SimpleCookie()
+            cookie = cookies.SimpleCookie()
             cookie.load(cookie_string)
 
             for key in cookie:
@@ -79,7 +79,7 @@ class InputCGI(Input):
 
         cookie_string = os.environ.get('HTTP_COOKIE')
         if cookie_string:
-            cookie = Cookie.SimpleCookie()
+            cookie = cookies.SimpleCookie()
             cookie.load(cookie_string)
 
             for key in cookie:
@@ -135,8 +135,8 @@ class InputCGI(Input):
 
 class OutputCGI(Output):
     def error(self):
-        print 'Status: 500 Internal Server Error\r\n\r\n'
-        print '<h1>500 Internal Server Error</h1>'
+        print('Status: 500 Internal Server Error\r\n\r\n')
+        print('<h1>500 Internal Server Error</h1>')
 
         return None
 
